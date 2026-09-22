@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: 
+      POSTGRES_DB: notes
+      POSTGRES_USER: notes_user
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}" 
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notes_user -d notes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # No "ports:" on purpose. The database is only reachable by other containers on the Compose network, not from your host.
+
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: notes
+      DB_USER: notes_user
+      DB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}"
+    depends_on: 
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
